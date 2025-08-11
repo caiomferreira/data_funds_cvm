@@ -5,8 +5,18 @@ import pandas as pd
 import requests
 import re
 import tempfile
+from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
+
+BASE_DIR = Path(__file__).parent
+TPL_PATH = BASE_DIR / "models" / "FICHA_FUNDO.docx"   # respeita maiúsculas/minúsculas
+
+if not TPL_PATH.exists():
+    st.error(f"Template não encontrado: {TPL_PATH}")
+    st.stop()
+
+TEMPLATE_BYTES = TPL_PATH.read_bytes()
 
 #%%
 url_data_registros = "https://dados.cvm.gov.br/dados/FI/CAD/DADOS/registro_fundo_classe.zip"
@@ -89,7 +99,7 @@ def preencher_ficha(data_base: dict) -> io.BytesIO:
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for cnpj, data_dict in data_base.items():
-            doc = Document(r"models\FICHA_FUNDO.docx")
+            doc = Document(io.BytesIO(TEMPLATE_BYTES))
 
             for p in doc.paragraphs:
                 for key, val in data_dict.items():
@@ -304,7 +314,7 @@ if st.button("Consultar"):
 # === Resultados sempre que existirem ===
 if "df_out" in st.session_state and not st.session_state["df_out"].empty:
     df_to_show = st.session_state["df_out"].astype(str)
-    st.dataframe(df_to_show, use_container_width=True)
+    st.dataframe(df_to_show.T, use_container_width=True)
 
     # Gerar ZIP e guardar bytes no estado
     if st.button("Gerar Fichas", key="gerar_zip"):
